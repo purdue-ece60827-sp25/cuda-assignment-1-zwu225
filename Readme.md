@@ -2,7 +2,7 @@
 
 ## Professor: T. N. Vijaykumar <br> TA: Ni Kang
 
-## Due on Saturday, Feburary 8 at 11:59 PM ET (02/09 at 04:59 UTC)
+## Due on Saturday, Feburary 1 at 11:59 PM ET (02/02 at 04:59 UTC)
 ## Introduction
 
 The purpose of this lab is to familiarize yourself with CUDA programming and the fundamental methodology for parallelizing a traditional CPU-based algorithm for GPU acceleration.  

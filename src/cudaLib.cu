@@ -13,6 +13,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort)
 __global__ 
 void saxpy_gpu (float* x, float* y, float scale, int size) {
 	//	Insert GPU SAXPY kernel code here
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	if(i<size) y[i] = y[i] + scale * x[i];
 }
 
 int runGpuSaxpy(int vectorSize) {
@@ -20,8 +22,49 @@ int runGpuSaxpy(int vectorSize) {
 	std::cout << "Hello GPU Saxpy!\n";
 
 	//	Insert code here
-	std::cout << "Lazy, you are!\n";
-	std::cout << "Write code, you must\n";
+	// 	Init floating point vectors
+	size_t vectorBytes = vectorSize * sizeof(float);
+	float *a, *b, *c;
+	float *a_d, *c_d;
+	
+	a = (float *) malloc(vectorBytes);
+	b = (float *) malloc(vectorBytes);
+	c = (float *) malloc(vectorBytes);
+
+	if (a == NULL || b == NULL || c == NULL) {
+		printf("Unable to malloc memory ... Exiting!");
+		return -1;
+	}
+
+	vectorInit(a, vectorSize);
+	vectorInit(b, vectorSize);
+	std::memcpy(c, b, vectorBytes);	//	C = B
+	
+	cudaMalloc(&a_d, vectorBytes);
+	cudaMemcpy(a_d, a, vectorBytes, cudaMemcpyHostToDevice);
+	cudaMalloc(&c_d, vectorBytes);
+	cudaMemcpy(c_d, c, vectorBytes, cudaMemcpyHostToDevice);
+
+	float scale = (float)(rand() % 10);
+
+	//	GPU SAXPY
+	dim3 DimGrid(vectorSize/256, 1, 1);
+	if (vectorSize%256) DimGrid.x++;
+	dim3 DimBlock(256, 1, 1);
+	saxpy_gpu<<<DimGrid, DimBlock>>>(a_d, c_d, scale, vectorSize);
+	cudaMemcpy(c, c_d, vectorBytes, cudaMemcpyDeviceToHost);
+	
+	//	Check answer with CPU
+	int errorCount = verifyVector(a, b, c, scale, vectorSize);
+	std::cout << "Found " << errorCount << " / " << vectorSize << " errors \n";
+
+	std::cout << "Freeing ...\n";
+	free(a);
+	free(b);
+	free(c);
+	cudaFree(a_d);
+	cudaFree(c_d);
+	std::cout << "... done!\n";
 
 	return 0;
 }

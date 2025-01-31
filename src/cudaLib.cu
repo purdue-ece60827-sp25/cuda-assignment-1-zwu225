@@ -47,6 +47,21 @@ int runGpuSaxpy(int vectorSize) {
 
 	float scale = (float)(rand() % 10);
 
+	#ifndef DEBUG_PRINT_DISABLE 
+		printf("\n Adding vectors : \n");
+		printf(" scale = %f\n", scale);
+		printf(" a = { ");
+		for (int i = 0; i < 5; ++i) {
+			printf("%3.4f, ", a[i]);
+		}
+		printf(" ... }\n");
+		printf(" b = { ");
+		for (int i = 0; i < 5; ++i) {
+			printf("%3.4f, ", b[i]);
+		}
+		printf(" ... }\n");
+	#endif
+
 	//	GPU SAXPY
 	dim3 DimGrid(vectorSize/256, 1, 1);
 	if (vectorSize%256) DimGrid.x++;

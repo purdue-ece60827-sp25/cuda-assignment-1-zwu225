@@ -84,6 +84,21 @@ int runGpuSaxpy(int vectorSize) {
 __global__
 void generatePoints (uint64_t * pSums, uint64_t pSumSize, uint64_t sampleSize) {
 	//	Insert code here
+	int i = threadIdx.x + blockDim.x * blockIdx.x;
+	pSums[i] = 0;
+	float x, y;
+	
+	// Setup RNG
+	curandState_t rng;
+	curand_init(clock64(), i, 0, &rng);
+
+	if (i < pSumSize){
+		for (uint64_t idx = 0; idx < sampleSize; ++idx) {
+			x = curand_uniform(&rng);
+			y = curand_uniform(&rng);
+			pSums[i] += (uint64_t) 1 - (uint64_t)(x * x + y * y);
+		}
+	}
 }
 
 __global__ 
@@ -122,8 +137,31 @@ double estimatePi(uint64_t generateThreadCount, uint64_t sampleSize,
 	
 	double approxPi = 0;
 
-	//      Insert code here
-	std::cout << "Sneaky, you are ...\n";
-	std::cout << "Compute pi, you must!\n";
+	//	Insert code here
+	//	Init
+	uint64_t *hitVector, *hitVector_d;
+	hitVector = (uint64_t *) malloc(generateThreadCount * sizeof(uint64_t));
+	cudaMalloc(&hitVector_d, generateThreadCount * sizeof(uint64_t));
+
+	//	GPU launch
+	dim3 DimGrid(generateThreadCount/256, 1, 1);
+	if (generateThreadCount%256) DimGrid.x++;
+	dim3 DimBlock(256, 1, 1);
+	generatePoints<<<DimGrid, DimBlock>>>(hitVector_d, generateThreadCount, sampleSize);
+	cudaMemcpy(hitVector, hitVector_d, generateThreadCount * sizeof(uint64_t), cudaMemcpyDeviceToHost);
+
+	//	CPU sum
+	for (uint64_t i = 0; i < generateThreadCount; ++i){
+		approxPi += (double)hitVector[i];
+	}
+
+	approxPi = approxPi / (double)sampleSize / (double)generateThreadCount;
+	approxPi *= 4.0f; 
+
+	std::cout << "Freeing ...\n";
+	free(hitVector);
+	cudaFree(hitVector_d);
+	std::cout << "... done!\n";
+
 	return approxPi;
 }
